@@ -42,7 +42,7 @@ struct editorConfig {
   int screenrows;
   int screencols;
   int numrows;
-  erow row;
+  erow *row;  
   struct termios orig_termios;
 };
 struct editorConfig E;
@@ -151,8 +151,16 @@ int getWindowSize(int *rows, int *cols) {
   }
 }
 
-/*** File I/O ***/
+/*** row operations ***/
+void editorAppendRow(char *s, size_t len) {
+  E.row.size = len;
+  E.row.chars = malloc(len + 1);
+  memcpy(E.row.chars, s, len);
+  E.row.chars[len] = '\0';
+  E.numrows = 1;
+}
 
+/*** File I/O ***/
 void editorOpen(char *filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp) die("fopen");
@@ -164,16 +172,11 @@ void editorOpen(char *filename) {
     while (linelen > 0 && (line[linelen - 1] == '\n' ||
                            line[linelen - 1] == '\r'))
       linelen--;
-    E.row.size = linelen;
-    E.row.chars = malloc(linelen + 1);
-    memcpy(E.row.chars, line, linelen);
-    E.row.chars[linelen] = '\0';
-    E.numrows = 1;
+    editorAppendRow(line, linelen);
   }
   free(line);
   fclose(fp);
 }
-
 /*** append buffer ***/
 struct abuf {
   char *b;
@@ -304,7 +307,7 @@ void initEditor() {
   E.cx = 0;
   E.cy = 0;
   E.numrows = 0;
-
+  E.row = NULL;
   if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
